@@ -1,9 +1,5 @@
-import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flower_connect/main.dart';
-import 'package:flower_connect/core/models/user_model.dart';
 import 'package:flower_connect/core/models/order_model.dart';
 import 'package:flower_connect/core/models/rfq_model.dart';
 import 'package:flower_connect/core/state/rfq_provider.dart';
@@ -11,19 +7,7 @@ import 'package:flower_connect/core/state/cart_provider.dart';
 import 'package:flower_connect/core/state/order_provider.dart';
 import 'package:flower_connect/core/constants/demo_data.dart';
 
-class _TestHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)
-      ..badCertificateCallback = (cert, host, port) => true;
-  }
-}
-
 void main() {
-  setUpAll(() {
-    HttpOverrides.global = null;
-  });
-
   test('Unit Test - Cart calculation and fulfillment logic', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);

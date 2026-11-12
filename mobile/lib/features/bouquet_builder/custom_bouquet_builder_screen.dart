@@ -480,7 +480,7 @@ class _CustomBouquetBuilderScreenState
                                 shopId: 'shop_002',
                                 shopName: 'Petals & Blooms Studio',
                                 name:
-                                    'Custom Bouquet (${_totalStems} Stems in ${_selectedBase.name})',
+                                    'Custom Bouquet ($_totalStems Stems in ${_selectedBase.name})',
                                 description:
                                     'Custom hand-tied arrangement: $_totalStems stems, ${_selectedRibbon.name} ribbon, ${_selectedAddons.length} add-ons.',
                                 category: ProductCategory.customBouquet,
