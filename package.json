@@ -1,0 +1,12 @@
+{
+  "name": "flower-connect-rules-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node ./node_modules/mocha/bin/mocha.js test/firestore_rules.test.js --timeout 20000"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "mocha": "^10.7.3"
+  }
+}

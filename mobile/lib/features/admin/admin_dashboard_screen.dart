@@ -3,13 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/state/app_state_provider.dart';
 import '../../core/state/order_provider.dart';
+import '../../core/state/rfq_provider.dart';
+import '../../core/state/auth_state_provider.dart';
 import '../auth/role_switcher_sheet.dart';
 
-class AdminDashboardScreen extends ConsumerWidget {
+class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(rfqProvider.notifier).refreshFromFirestore();
+      ref.read(orderProvider.notifier).refreshFromFirestore();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final appState = ref.watch(appStateProvider);
     final orderState = ref.watch(orderProvider);
 
@@ -27,6 +43,13 @@ class AdminDashboardScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.swap_horiz, color: AppColors.primary),
             onPressed: () => RoleSwitcherSheet.show(context),
+          ),
+          IconButton(
+            tooltip: 'Log Out',
+            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
+            onPressed: () {
+              ref.read(authStateProvider.notifier).logout();
+            },
           ),
         ],
       ),
@@ -227,21 +250,65 @@ class AdminDashboardScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: shop.isOpen ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        shop.isOpen ? 'ACTIVE' : 'OFFLINE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: shop.isOpen ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                    if (!shop.isVerified)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFF59E0B)),
+                            ),
+                            child: const Text(
+                              'PENDING',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFB45309),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF16A34A),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              minimumSize: const Size(64, 28),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              ref.read(appStateProvider.notifier).approveVendor(shop.id);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('"${shop.name}" has been approved & activated!'),
+                                  backgroundColor: const Color(0xFF16A34A),
+                                ),
+                              );
+                            },
+                            child: const Text('Approve', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: shop.isOpen ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          shop.isOpen ? 'ACTIVE' : 'OFFLINE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: shop.isOpen ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               );

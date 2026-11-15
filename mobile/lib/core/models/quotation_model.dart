@@ -44,6 +44,54 @@ class QuotationModel {
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'rfq_id': rfqId,
+      'merchant_id': merchantId,
+      'shop_name': shopName,
+      'merchant_phone': merchantPhone,
+      'merchant_rating': merchantRating,
+      'distance_km': distanceKm,
+      'quoted_price': quotedPrice,
+      'delivery_fee': deliveryFee,
+      'prep_time_minutes': prepTimeMinutes,
+      'notes': notes,
+      'freshness_guarantee': freshnessGuarantee,
+      'status': status.name,
+      'submitted_at': submittedAt.toIso8601String(),
+      'expires_at': expiresAt.toIso8601String(),
+    };
+  }
+
+  factory QuotationModel.fromJson(Map<String, dynamic> json) {
+    return QuotationModel(
+      id: json['id'] as String,
+      rfqId: json['rfq_id'] as String? ?? '',
+      merchantId: json['merchant_id'] as String? ?? '',
+      shopName: json['shop_name'] as String? ?? 'Flower Shop',
+      merchantPhone: json['merchant_phone'] as String? ?? '',
+      merchantRating: (json['merchant_rating'] as num?)?.toDouble() ?? 4.8,
+      distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 1.5,
+      quotedPrice: (json['quoted_price'] as num?)?.toDouble() ?? 0.0,
+      deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 40.0,
+      prepTimeMinutes: (json['prep_time_minutes'] as num?)?.toInt() ?? 25,
+      notes: json['notes'] as String? ?? '',
+      freshnessGuarantee: json['freshness_guarantee'] as String? ??
+          'Guaranteed 100% farm-fresh morning cuts',
+      status: QuotationStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => QuotationStatus.pending,
+      ),
+      submittedAt: json['submitted_at'] != null
+          ? DateTime.tryParse(json['submitted_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'].toString()) ?? DateTime.now()
+          : DateTime.now().add(const Duration(minutes: 45)),
+    );
+  }
+
   QuotationModel copyWith({
     String? id,
     String? rfqId,

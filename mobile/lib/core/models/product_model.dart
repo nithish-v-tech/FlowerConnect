@@ -138,5 +138,61 @@ class ProductModel {
       tags: tags ?? this.tags,
     );
   }
+
+  factory ProductModel.fromJson(Map<String, dynamic> json, {String? defaultShopName}) {
+    ProductCategory parsedCategory = ProductCategory.freshFlowers;
+    final catStr = json['category']?.toString().toUpperCase() ?? 'FRESH_FLOWERS';
+    if (catStr.contains('READY_BOUQUETS')) {
+      parsedCategory = ProductCategory.readyBouquets;
+    } else if (catStr.contains('ROSES')) {
+      parsedCategory = ProductCategory.roses;
+    } else if (catStr.contains('LILIES')) {
+      parsedCategory = ProductCategory.lilies;
+    } else if (catStr.contains('EXOTICS')) {
+      parsedCategory = ProductCategory.exotics;
+    } else if (catStr.contains('CHOCOLATES')) {
+      parsedCategory = ProductCategory.chocolates;
+    } else if (catStr.contains('PLUSH_TOYS')) {
+      parsedCategory = ProductCategory.plushToys;
+    } else if (catStr.contains('GREETING_CARDS')) {
+      parsedCategory = ProductCategory.greetingCards;
+    } else if (catStr.contains('GIFT_HAMPERS')) {
+      parsedCategory = ProductCategory.giftHampers;
+    }
+
+    return ProductModel(
+      id: json['id']?.toString() ?? '',
+      shopId: json['shop_id']?.toString() ?? '',
+      shopName: json['shop_name']?.toString() ?? defaultShopName ?? 'Florist Stall',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      category: parsedCategory,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      originalPrice: (json['original_price'] as num?)?.toDouble(),
+      unit: json['unit']?.toString() ?? 'piece',
+      imageUrl: json['image_url']?.toString() ??
+          'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
+      rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
+      reviewsCount: (json['reviews_count'] as num?)?.toInt() ?? 20,
+      inStock: json['in_stock'] as bool? ?? true,
+      isBestseller: json['is_bestseller'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'shop_id': shopId,
+      'name': name,
+      'description': description,
+      'category': category.name,
+      'price': price,
+      'original_price': originalPrice,
+      'unit': unit,
+      'image_url': imageUrl,
+      'in_stock': inStock,
+      'is_bestseller': isBestseller,
+    };
+  }
 }
 

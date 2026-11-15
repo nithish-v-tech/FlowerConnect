@@ -83,5 +83,43 @@ class UserModel {
       address: address ?? this.address,
     );
   }
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    UserRole parsedRole = UserRole.customer;
+    final roleStr = json['role']?.toString().toUpperCase() ?? 'CUSTOMER';
+    if (roleStr.contains('FLOWER_MERCHANT') || roleStr.contains('FLOWERMERCHANT')) {
+      parsedRole = UserRole.flowerMerchant;
+    } else if (roleStr.contains('BOUQUET_MERCHANT') || roleStr.contains('BOUQUETMERCHANT')) {
+      parsedRole = UserRole.bouquetMerchant;
+    } else if (roleStr.contains('GIFT_MERCHANT') || roleStr.contains('GIFTMERCHANT')) {
+      parsedRole = UserRole.giftMerchant;
+    } else if (roleStr.contains('DELIVERY_PARTNER') || roleStr.contains('DELIVERYPARTNER')) {
+      parsedRole = UserRole.deliveryPartner;
+    } else if (roleStr.contains('ADMIN')) {
+      parsedRole = UserRole.admin;
+    }
+
+    return UserModel(
+      id: json['id']?.toString() ?? '',
+      name: json['full_name']?.toString() ?? json['name']?.toString() ?? 'User',
+      email: json['email']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      role: parsedRole,
+      shopId: json['shop_id']?.toString(),
+      address: json['address']?.toString() ?? 'Bengaluru, Karnataka',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'full_name': name,
+      'email': email,
+      'phone': phone,
+      'role': role.name,
+      'shop_id': shopId,
+      'address': address,
+    };
+  }
 }
 

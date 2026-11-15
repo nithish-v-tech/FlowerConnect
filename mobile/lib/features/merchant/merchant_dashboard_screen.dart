@@ -6,16 +6,34 @@ import '../../core/models/rfq_model.dart';
 import '../../core/state/app_state_provider.dart';
 import '../../core/state/order_provider.dart';
 import '../../core/state/rfq_provider.dart';
+import '../../core/state/auth_state_provider.dart';
 import '../auth/role_switcher_sheet.dart';
 import '../shared/status_badge.dart';
 import 'submit_quotation_dialog.dart';
 import 'daily_price_manager_screen.dart';
 
-class MerchantDashboardScreen extends ConsumerWidget {
+class MerchantDashboardScreen extends ConsumerStatefulWidget {
   const MerchantDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MerchantDashboardScreen> createState() => _MerchantDashboardScreenState();
+}
+
+class _MerchantDashboardScreenState extends ConsumerState<MerchantDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(appStateProvider).currentUser;
+      ref.read(rfqProvider.notifier).refreshFromFirestore();
+      if (user.shopId != null) {
+        ref.read(orderProvider.notifier).refreshFromFirestore(shopId: user.shopId);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final appState = ref.watch(appStateProvider);
     final orderState = ref.watch(orderProvider);
     final rfqState = ref.watch(rfqProvider);
@@ -57,6 +75,13 @@ class MerchantDashboardScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.swap_horiz, color: AppColors.primary),
             onPressed: () => RoleSwitcherSheet.show(context),
+          ),
+          IconButton(
+            tooltip: 'Log Out',
+            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
+            onPressed: () {
+              ref.read(authStateProvider.notifier).logout();
+            },
           ),
         ],
       ),

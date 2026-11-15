@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/models/order_model.dart';
 import '../../core/state/app_state_provider.dart';
 import '../../core/state/order_provider.dart';
+import '../../core/state/auth_state_provider.dart';
 import '../auth/role_switcher_sheet.dart';
 import '../shared/status_badge.dart';
 
@@ -66,6 +67,13 @@ class _DeliveryDashboardScreenState
           IconButton(
             icon: const Icon(Icons.swap_horiz, color: AppColors.primary),
             onPressed: () => RoleSwitcherSheet.show(context),
+          ),
+          IconButton(
+            tooltip: 'Log Out',
+            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
+            onPressed: () {
+              ref.read(authStateProvider.notifier).logout();
+            },
           ),
         ],
       ),

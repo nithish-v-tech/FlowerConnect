@@ -96,6 +96,26 @@ class DemoData {
         'Tulsi Leaves Garland': 60.0,
       },
     ),
+    const ShopModel(
+      id: 'shop_pending_01',
+      name: 'Sunshine Florist & Gifts',
+      type: ShopType.flowerShop,
+      address: '12th Main, HAL 2nd Stage, Indiranagar, Bengaluru',
+      rating: 0.0,
+      totalReviews: 0,
+      distanceKm: 1.2,
+      etaMinutes: 25,
+      imageUrl: 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=600&q=80',
+      isVerified: false,
+      isFeatured: false,
+      isOpen: false,
+      ownerName: 'Kavita Reddy',
+      contactPhone: '+91 99999 88888',
+      dailyRates: {
+        'Fresh Marigold (kg)': 100.0,
+        'Red Roses (Stems)': 250.0,
+      },
+    ),
   ];
 
   // Catalogue products

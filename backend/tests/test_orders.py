@@ -1,5 +1,4 @@
 import pytest
-from app.api.v1.orders import ORDERS_DB
 from app.models.order import OrderStatus
 
 def test_order_otp_verification_logic():

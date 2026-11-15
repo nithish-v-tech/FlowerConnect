@@ -55,6 +55,59 @@ class RFQModel {
     return diff.isNegative ? Duration.zero : diff;
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'customer_id': customerId,
+      'customer_name': customerName,
+      'title': title,
+      'flower_type': flowerType,
+      'quantity_description': quantityDescription,
+      'occasion': occasion,
+      'delivery_preference': deliveryPreference.name,
+      'delivery_address': deliveryAddress,
+      'target_budget': targetBudget,
+      'need_by': needBy.toIso8601String(),
+      'status': status.name,
+      'created_at': createdAt.toIso8601String(),
+      'expires_at': expiresAt.toIso8601String(),
+      'quotations_count': quotationsCount,
+      'accepted_quotation_id': acceptedQuotationId,
+    };
+  }
+
+  factory RFQModel.fromJson(Map<String, dynamic> json) {
+    return RFQModel(
+      id: json['id'] as String,
+      customerId: json['customer_id'] as String? ?? '',
+      customerName: json['customer_name'] as String? ?? 'Customer',
+      title: json['title'] as String? ?? '',
+      flowerType: json['flower_type'] as String? ?? '',
+      quantityDescription: json['quantity_description'] as String? ?? '',
+      occasion: json['occasion'] as String?,
+      deliveryPreference: json['delivery_preference'] == 'selfPickup'
+          ? DeliveryPreference.selfPickup
+          : DeliveryPreference.homeDelivery,
+      deliveryAddress: json['delivery_address'] as String? ?? '',
+      targetBudget: (json['target_budget'] as num?)?.toDouble(),
+      needBy: json['need_by'] != null
+          ? DateTime.tryParse(json['need_by'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      status: RFQStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => RFQStatus.broadcasting,
+      ),
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'].toString()) ?? DateTime.now()
+          : DateTime.now().add(const Duration(minutes: 45)),
+      quotationsCount: (json['quotations_count'] as num?)?.toInt() ?? 0,
+      acceptedQuotationId: json['accepted_quotation_id'] as String?,
+    );
+  }
+
   RFQModel copyWith({
     String? id,
     String? customerId,

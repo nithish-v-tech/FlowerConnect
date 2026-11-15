@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/state/rfq_provider.dart';
+import '../../core/state/order_provider.dart';
 import '../../core/state/app_state_provider.dart';
+import '../../core/state/auth_state_provider.dart';
 import 'customer_home_screen.dart';
 import '../bouquet_builder/custom_bouquet_builder_screen.dart';
 import '../quotation/quotation_comparison_screen.dart';
@@ -19,6 +21,16 @@ class CustomerMainNav extends ConsumerStatefulWidget {
 
 class _CustomerMainNavState extends ConsumerState<CustomerMainNav> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(appStateProvider).currentUser;
+      ref.read(rfqProvider.notifier).refreshFromFirestore(customerId: user.id);
+      ref.read(orderProvider.notifier).refreshFromFirestore(customerId: user.id);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +211,16 @@ class _CustomerProfileTab extends ConsumerWidget {
                     title: const Text('Help & Customer Support', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     subtitle: const Text('Call 1800-420-FLOWERS', style: TextStyle(fontSize: 11)),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.logout, color: Colors.red),
+                    title: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.red)),
+                    subtitle: const Text('Switch mobile account', style: TextStyle(fontSize: 11)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.red),
+                    onTap: () {
+                      ref.read(authStateProvider.notifier).logout();
+                    },
                   ),
                 ],
               ),

@@ -1,0 +1,420 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------
+    // AUTHENTICATION & ROLE HELPERS
+    // ----------------------------------------------------
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasUserDoc() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token != null && ('admin' in request.auth.token) && request.auth.token.admin == true) ||
+        (hasUserDoc() && (
+          getUserData().role == 'ADMIN' ||
+          getUserData().role == 'admin' ||
+          getUserData().role == 'SUPER_ADMIN' ||
+          getUserData().role == 'super_admin'
+        ))
+      );
+    }
+
+    function isVerifiedMerchant() {
+      return isAuthenticated() && hasUserDoc() && (
+        getUserData().is_vendor_approved == true &&
+        (
+          getUserData().role == 'FLOWER_MERCHANT' ||
+          getUserData().role == 'BOUQUET_MERCHANT' ||
+          getUserData().role == 'GIFT_MERCHANT' ||
+          getUserData().role == 'flowerMerchant' ||
+          getUserData().role == 'bouquetMerchant' ||
+          getUserData().role == 'giftMerchant'
+        )
+      );
+    }
+
+    function isShopOwner(shopId) {
+      return isAuthenticated() && (
+        (hasUserDoc() && ('shop_id' in getUserData()) && getUserData().shop_id == shopId) ||
+        (exists(/databases/$(database)/documents/shops/$(shopId)) && 
+         get(/databases/$(database)/documents/shops/$(shopId)).data.user_id == request.auth.uid)
+      );
+    }
+
+    function isRfqOwner(rfqId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/rfqs/$(rfqId)) &&
+        get(/databases/$(database)/documents/rfqs/$(rfqId)).data.customer_id == request.auth.uid;
+    }
+
+    function isDriver() {
+      return isAuthenticated() && hasUserDoc() && (
+        getUserData().role == 'DELIVERY_PARTNER' ||
+        getUserData().role == 'deliveryPartner'
+      );
+    }
+
+    // ----------------------------------------------------
+    // 1. Users Collection
+    // ----------------------------------------------------
+    match /users/{userId} {
+      // Users can only read their own profile; admins can read any profile
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+
+      // Profile creation:
+      // - Authenticated and user creates their own document
+      // - Non-admins cannot assign ADMIN role (in any case variation)
+      // - Non-admins cannot grant themselves vendor approval (is_vendor_approved must be false or omitted)
+      // - Non-admins cannot set is_admin or admin flags
+      allow create: if isAuthenticated() && (
+        isAdmin() || (
+          request.auth.uid == userId &&
+          !(request.resource.data.role in ['ADMIN', 'admin', 'Admin', 'SUPER_ADMIN', 'super_admin']) &&
+          (!('is_vendor_approved' in request.resource.data) || request.resource.data.is_vendor_approved == false) &&
+          (!('is_admin' in request.resource.data) || request.resource.data.is_admin == false) &&
+          (!('admin' in request.resource.data) || request.resource.data.admin == false)
+        )
+      );
+
+      // Profile updates:
+      // - Admins can update any field (including vendor approval and roles)
+      // - Users can update their own profile, BUT CANNOT change:
+      //   * role (must remain exactly equal to existing role)
+      //   * is_vendor_approved (must remain unchanged)
+      //   * cannot add or set is_admin or admin flags
+      //   * cannot change user id
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          request.auth.uid == userId &&
+          request.resource.data.role == resource.data.role &&
+          (
+            (!('is_vendor_approved' in resource.data) && (!('is_vendor_approved' in request.resource.data) || request.resource.data.is_vendor_approved == false)) ||
+            ('is_vendor_approved' in resource.data && 'is_vendor_approved' in request.resource.data && request.resource.data.is_vendor_approved == resource.data.is_vendor_approved)
+          ) &&
+          (!('is_admin' in request.resource.data) || request.resource.data.is_admin == false) &&
+          (!('admin' in request.resource.data) || request.resource.data.admin == false) &&
+          (!('id' in request.resource.data) || request.resource.data.id == resource.data.id)
+        )
+      );
+
+      // Users cannot delete their profile or other profiles; only Admin
+      allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------
+    // 2. Shops Collection
+    // ----------------------------------------------------
+    match /shops/{shopId} {
+      // Anyone can read verified shops. Unverified shops readable only by owner or admin.
+      allow read: if resource.data.is_verified == true || 
+                  (isAuthenticated() && (resource.data.user_id == request.auth.uid || isAdmin()));
+
+      // Shop creation:
+      // - Must enforce user_id == request.auth.uid
+      // - is_verified must be false initially (cannot self-verify)
+      // - Or Admin can create pre-verified shops
+      allow create: if isAuthenticated() && (
+        isAdmin() || (
+          request.resource.data.user_id == request.auth.uid &&
+          (!('is_verified' in request.resource.data) || request.resource.data.is_verified == false)
+        )
+      );
+
+      // Shop updates:
+      // - Admins can update anything (including setting is_verified: true)
+      // - Shop owner can update daily rates, hours, contact info,
+      //   BUT cannot change user_id or self-approve (is_verified must remain unchanged)
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          resource.data.user_id == request.auth.uid &&
+          request.resource.data.user_id == resource.data.user_id &&
+          request.resource.data.is_verified == resource.data.is_verified
+        )
+      );
+
+      // Deletion is strictly Admin-only
+      allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------
+    // 3. Products Collection
+    // ----------------------------------------------------
+    match /products/{productId} {
+      // Public catalogue browsing allowed for all users
+      allow read: if true;
+
+      // Product creation:
+      // - Verified merchant only
+      // - Must own the shop for which the product is created (isShopOwner)
+      // - Price must be non-negative
+      // - Or Admin
+      allow create: if isAuthenticated() && (
+        isAdmin() || (
+          isVerifiedMerchant() &&
+          isShopOwner(request.resource.data.shop_id) &&
+          request.resource.data.price is number &&
+          request.resource.data.price >= 0
+        )
+      );
+
+      // Product updates:
+      // - Verified merchant only
+      // - Must own the product's shop
+      // - Cannot change shop_id to transfer product to another vendor
+      // - Price must be non-negative
+      // - Or Admin
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          isVerifiedMerchant() &&
+          isShopOwner(resource.data.shop_id) &&
+          request.resource.data.shop_id == resource.data.shop_id &&
+          request.resource.data.price is number &&
+          request.resource.data.price >= 0
+        )
+      );
+
+      // Product deletion:
+      // - Only the vendor who owns the shop or Admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() || (
+          isVerifiedMerchant() &&
+          isShopOwner(resource.data.shop_id)
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 4. RFQs Collection (Customer Request For Quotations)
+    // ----------------------------------------------------
+    match /rfqs/{rfqId} {
+      // Read access:
+      // - Customer who created the RFQ
+      // - Approved vendors (to browse and submit bids)
+      // - Admin
+      // Unrelated customers and unapproved vendors CANNOT read
+      allow read: if isAuthenticated() && (
+        resource.data.customer_id == request.auth.uid ||
+        isVerifiedMerchant() ||
+        isAdmin()
+      );
+
+      // Creation:
+      // - Authenticated customer creates their own RFQ
+      // - Initial status must be broadcasting
+      // - Cannot set accepted_quotation_id on creation
+      allow create: if isAuthenticated() && (
+        isAdmin() || (
+          request.resource.data.customer_id == request.auth.uid &&
+          request.resource.data.status in ['broadcasting', 'quotesReceived'] &&
+          (!('accepted_quotation_id' in request.resource.data) || request.resource.data.accepted_quotation_id == null)
+        )
+      );
+
+      // Updates:
+      // - Admin
+      // - Placing Customer: can update details or accept a quote (updating status and accepted_quotation_id),
+      //   but cannot change customer_id
+      // - Approved Vendor: when submitting a quote, updates ONLY quotations_count and status
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          resource.data.customer_id == request.auth.uid &&
+          request.resource.data.customer_id == resource.data.customer_id
+        ) || (
+          isVerifiedMerchant() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quotations_count', 'status']) &&
+          request.resource.data.customer_id == resource.data.customer_id
+        )
+      );
+
+      // Deletion: Customer who owns it (if broadcasting) or Admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() || (
+          resource.data.customer_id == request.auth.uid &&
+          resource.data.status == 'broadcasting'
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 5. Quotations Collection (Merchant Price Bids)
+    // ----------------------------------------------------
+    match /quotations/{quoteId} {
+      // Read access:
+      // - Submitting merchant (by UID or shop owner)
+      // - The customer who created the RFQ
+      // - Admin
+      // Unrelated customers and competing merchants CANNOT read sealed quotations
+      allow read: if isAuthenticated() && (
+        resource.data.merchant_id == request.auth.uid ||
+        isShopOwner(resource.data.merchant_id) ||
+        isRfqOwner(resource.data.rfq_id) ||
+        isAdmin()
+      );
+
+      // Creation:
+      // - Must be an approved merchant
+      // - Merchant must own the merchant_id (user UID or shop_id)
+      // - Must reference an existing open RFQ
+      // - Initial status must be 'pending'
+      // - Quoted price must be positive
+      allow create: if isAuthenticated() && (
+        isAdmin() || (
+          isVerifiedMerchant() &&
+          (request.resource.data.merchant_id == request.auth.uid || isShopOwner(request.resource.data.merchant_id)) &&
+          exists(/databases/$(database)/documents/rfqs/$(request.resource.data.rfq_id)) &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.quoted_price is number &&
+          request.resource.data.quoted_price > 0 &&
+          request.resource.data.delivery_fee is number &&
+          request.resource.data.delivery_fee >= 0
+        )
+      );
+
+      // Updates:
+      // Case 1: Customer accepts or rejects quotation
+      // - Must be the RFQ customer
+      // - May ONLY modify 'status' field (set to 'accepted' or 'rejected')
+      // - Must NOT modify quoted_price, delivery_fee, merchant_id, rfq_id, notes, prep_time_minutes
+      // Case 2: Submitting merchant edits their pending quote
+      // - Quote must still be 'pending'
+      // - Cannot change merchant_id or rfq_id
+      // - Cannot self-accept (status can only remain 'pending' or 'rejected')
+      // Case 3: Admin
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          // Customer acceptance: only status can change
+          isRfqOwner(resource.data.rfq_id) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+          request.resource.data.status in ['accepted', 'rejected']
+        ) || (
+          // Merchant edit: only while pending, cannot change IDs or self-accept
+          (resource.data.merchant_id == request.auth.uid || isShopOwner(resource.data.merchant_id)) &&
+          resource.data.status == 'pending' &&
+          request.resource.data.merchant_id == resource.data.merchant_id &&
+          request.resource.data.rfq_id == resource.data.rfq_id &&
+          request.resource.data.status in ['pending', 'rejected'] &&
+          request.resource.data.quoted_price is number &&
+          request.resource.data.quoted_price > 0
+        )
+      );
+
+      // Deletion: Only Admin or submitting merchant while pending
+      allow delete: if isAuthenticated() && (
+        isAdmin() || (
+          (resource.data.merchant_id == request.auth.uid || isShopOwner(resource.data.merchant_id)) &&
+          resource.data.status == 'pending'
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 6. Orders Collection
+    // ----------------------------------------------------
+    match /orders/{orderId} {
+      // Read access:
+      // - Placing Customer
+      // - Merchant shop owner
+      // - Assigned Delivery Partner
+      // - Admin
+      // Unrelated users CANNOT read
+      allow read: if isAuthenticated() && (
+        resource.data.customer_id == request.auth.uid ||
+        isShopOwner(resource.data.shop_id) ||
+        (('shop_owner_id' in resource.data) && resource.data.shop_owner_id == request.auth.uid) ||
+        (('driver_id' in resource.data) && resource.data.driver_id == request.auth.uid) ||
+        isAdmin()
+      );
+
+      // Order creation:
+      // - Customer creates order with their own customer_id
+      // - CANNOT set payment_status to 'paid' (must be 'pending')
+      // - CANNOT assign driver on creation (driver_id / driver_name must be empty/null)
+      // - Status must be 'placed' or 'confirmed'
+      // - Amounts must be non-negative
+      // - Or Admin
+      allow create: if isAuthenticated() && (
+        isAdmin() || (
+          request.resource.data.customer_id == request.auth.uid &&
+          (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['pending', 'failed']) &&
+          (!('driver_id' in request.resource.data) || request.resource.data.driver_id == null || request.resource.data.driver_id == '') &&
+          (!('driver_name' in request.resource.data) || request.resource.data.driver_name == null || request.resource.data.driver_name == '') &&
+          request.resource.data.status in ['placed', 'confirmed'] &&
+          request.resource.data.grand_total is number &&
+          request.resource.data.grand_total >= 0 &&
+          request.resource.data.items_total is number &&
+          request.resource.data.items_total >= 0
+        )
+      );
+
+      // Order updates:
+      // IMMUTABLE CRITICAL FIELDS FOR ALL NON-ADMINS:
+      // - customer_id, shop_id, grand_total, items_total
+      // CANNOT be altered by anyone other than Admin.
+      //
+      // Permitted non-admin updates:
+      // 1. Merchant (Shop Owner):
+      //    - Can update order fulfillment status: ['confirmed', 'preparing', 'readyForPickup', 'outForDelivery', 'cancelled']
+      //    - Can update estimated_delivery_time
+      //    - CANNOT change payment_status to 'paid' or change amounts or ownership
+      // 2. Delivery Partner:
+      //    - When verifying OTP upon delivery: updates status to 'delivered' and payment_status to 'paid'
+      //    - Can update GPS tracking: driver_lat, driver_lng
+      //    - CANNOT change amounts or ownership
+      // 3. Customer:
+      //    - Can submit review: affectedKeys hasOnly ['rating', 'review']
+      //    - Can cancel if order is still 'placed': status = 'cancelled'
+      //    - CANNOT change payment_status, amounts, or assign driver
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          // Verify immutable fields
+          request.resource.data.customer_id == resource.data.customer_id &&
+          request.resource.data.shop_id == resource.data.shop_id &&
+          request.resource.data.grand_total == resource.data.grand_total &&
+          request.resource.data.items_total == resource.data.items_total &&
+          (
+            // Case 1: Merchant updates status or prep time
+            (
+              (isShopOwner(resource.data.shop_id) || (('shop_owner_id' in resource.data) && resource.data.shop_owner_id == request.auth.uid)) &&
+              request.resource.data.payment_status == resource.data.payment_status &&
+              (!('driver_id' in request.resource.data) || !('driver_id' in resource.data) || request.resource.data.driver_id == resource.data.driver_id) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'estimated_delivery_time'])
+            ) ||
+            // Case 2: Delivery Partner fulfills order or updates location
+            (
+              (isDriver() || (('driver_id' in resource.data) && resource.data.driver_id == request.auth.uid)) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'status', 'payment_status', 'driver_lat', 'driver_lng', 'driver_name', 'driver_phone', 'driver_id'
+              ])
+            ) ||
+            // Case 3: Customer review or cancellation
+            (
+              resource.data.customer_id == request.auth.uid &&
+              request.resource.data.payment_status == resource.data.payment_status &&
+              (
+                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'review']) ||
+                (resource.data.status == 'placed' && 
+                 request.resource.data.status == 'cancelled' && 
+                 request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+              )
+            )
+          )
+        )
+      );
+
+      // Deletion is strictly Admin-only
+      allow delete: if isAdmin();
+    }
+  }
+}

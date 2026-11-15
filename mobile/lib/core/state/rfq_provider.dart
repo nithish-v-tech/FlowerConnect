@@ -4,6 +4,7 @@ import '../models/rfq_model.dart';
 import '../models/quotation_model.dart';
 import '../models/order_model.dart';
 import '../constants/demo_data.dart';
+import '../services/firestore_service.dart';
 import 'order_provider.dart';
 
 class RFQState {
@@ -79,6 +80,11 @@ class RFQNotifier extends Notifier<RFQState> {
       quotationsCount: 0,
     );
 
+    // Persist RFQ to Cloud Firestore
+    try {
+      FirestoreService.createRfq(newRfq);
+    } catch (_) {}
+
     final updatedRequests = [newRfq, ...state.requests];
     final updatedQuotesMap = Map<String, List<QuotationModel>>.from(state.quotationsMap);
     updatedQuotesMap[newId] = [];
@@ -123,6 +129,11 @@ class RFQNotifier extends Notifier<RFQState> {
       submittedAt: DateTime.now(),
       expiresAt: DateTime.now().add(const Duration(minutes: 30)),
     );
+
+    // Persist Quotation to Cloud Firestore
+    try {
+      FirestoreService.submitQuotation(newQuote);
+    } catch (_) {}
 
     final updatedQuotesMap = Map<String, List<QuotationModel>>.from(state.quotationsMap);
     final existingList = List<QuotationModel>.from(updatedQuotesMap[rfqId] ?? []);
@@ -182,12 +193,17 @@ class RFQNotifier extends Notifier<RFQState> {
       acceptedQuotationId: quotationId,
     );
 
+    // Persist accepted status to Cloud Firestore
+    try {
+      FirestoreService.acceptQuotation(rfqId, quotationId);
+    } catch (_) {}
+
     state = state.copyWith(
       requests: updatedRequests,
       quotationsMap: updatedQuotesMap,
     );
 
-    // Convert into a real confirmed order
+    // Convert into a real confirmed persistent order
     final newOrder = OrderModel(
       id: 'ORD-Q${_uuid.v4().substring(0, 6).toUpperCase()}',
       customerId: rfq.customerId,
@@ -218,20 +234,47 @@ class RFQNotifier extends Notifier<RFQState> {
           ? OrderFulfillment.homeDelivery
           : OrderFulfillment.selfPickup,
       paymentMethod: PaymentMethod.upi,
-      paymentStatus: PaymentStatus.paid,
+      paymentStatus: PaymentStatus.pending, // Pending customer payment completion
       status: OrderStatus.confirmed,
       deliveryAddress: rfq.deliveryAddress,
       deliveryOtp: '7412',
-      driverName: 'Suresh Kumar',
-      driverPhone: '+91 98450 44332',
-      driverLat: 12.9716,
-      driverLng: 77.5946,
+      driverName: null, // Driver unassigned until order dispatch
+      driverPhone: null,
+      driverLat: null,
+      driverLng: null,
       createdAt: DateTime.now(),
       estimatedDeliveryTime: DateTime.now().add(Duration(minutes: chosen.prepTimeMinutes + 20)),
     );
 
     ref.read(orderProvider.notifier).addOrder(newOrder);
     return newOrder;
+  }
+
+  /// Reload persistent RFQs and quotations from Cloud Firestore
+  Future<void> refreshFromFirestore({String? customerId}) async {
+    try {
+      final firestoreRfqs = await FirestoreService.getRfqs(customerId: customerId);
+      if (firestoreRfqs != null && firestoreRfqs.isNotEmpty) {
+        final updatedQuotesMap = Map<String, List<QuotationModel>>.from(state.quotationsMap);
+        for (final rfq in firestoreRfqs) {
+          final quotes = await FirestoreService.getQuotationsForRfq(rfq.id);
+          if (quotes != null) {
+            updatedQuotesMap[rfq.id] = quotes;
+          }
+        }
+        final existingIds = state.requests.map((r) => r.id).toSet();
+        final List<RFQModel> newRfqs = [];
+        for (final r in firestoreRfqs) {
+          if (!existingIds.contains(r.id)) {
+            newRfqs.add(r);
+          }
+        }
+        state = state.copyWith(
+          requests: [...newRfqs, ...state.requests],
+          quotationsMap: updatedQuotesMap,
+        );
+      }
+    } catch (_) {}
   }
 }
 

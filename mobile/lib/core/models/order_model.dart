@@ -42,6 +42,28 @@ class OrderItemModel {
   });
 
   double get totalPrice => unitPrice * quantity;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'product_id': productId,
+      'product_name': productName,
+      'unit_price': unitPrice,
+      'quantity': quantity,
+      'unit': unit,
+      'image_url': imageUrl,
+    };
+  }
+
+  factory OrderItemModel.fromJson(Map<String, dynamic> json) {
+    return OrderItemModel(
+      productId: json['product_id'] as String? ?? '',
+      productName: json['product_name'] as String? ?? 'Flower Item',
+      unitPrice: (json['unit_price'] as num?)?.toDouble() ?? 0.0,
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      unit: json['unit'] as String? ?? 'Bunch',
+      imageUrl: json['image_url'] as String? ?? '',
+    );
+  }
 }
 
 class OrderModel {
@@ -122,6 +144,91 @@ class OrderModel {
       case OrderStatus.cancelled:
         return 'Cancelled';
     }
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'customer_id': customerId,
+      'customer_name': customerName,
+      'customer_phone': customerPhone,
+      'shop_id': shopId,
+      'shop_name': shopName,
+      'items': items.map((i) => i.toJson()).toList(),
+      'items_total': itemsTotal,
+      'delivery_fee': deliveryFee,
+      'platform_commission': platformCommission,
+      'grand_total': grandTotal,
+      'fulfillment': fulfillment.name,
+      'payment_method': paymentMethod.name,
+      'payment_status': paymentStatus.name,
+      'status': status.name,
+      'delivery_address': deliveryAddress,
+      'delivery_otp': deliveryOtp,
+      'driver_name': driverName,
+      'driver_phone': driverPhone,
+      'driver_lat': driverLat,
+      'driver_lng': driverLng,
+      'is_surprise_delivery': isSurpriseDelivery,
+      'surprise_recipient_name': surpriseRecipientName,
+      'surprise_note': surpriseNote,
+      'created_at': createdAt.toIso8601String(),
+      'estimated_delivery_time': estimatedDeliveryTime?.toIso8601String(),
+      'rating': rating,
+      'review': review,
+    };
+  }
+
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    return OrderModel(
+      id: json['id'] as String,
+      customerId: json['customer_id'] as String? ?? '',
+      customerName: json['customer_name'] as String? ?? 'Customer',
+      customerPhone: json['customer_phone'] as String? ?? '',
+      shopId: json['shop_id'] as String? ?? '',
+      shopName: json['shop_name'] as String? ?? 'Flower Stall',
+      items: (json['items'] as List<dynamic>?)
+              ?.map((i) => OrderItemModel.fromJson(i as Map<String, dynamic>))
+              .toList() ??
+          [],
+      itemsTotal: (json['items_total'] as num?)?.toDouble() ?? 0.0,
+      deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 40.0,
+      platformCommission: (json['platform_commission'] as num?)?.toDouble() ?? 25.0,
+      grandTotal: (json['grand_total'] as num?)?.toDouble() ?? 0.0,
+      fulfillment: OrderFulfillment.values.firstWhere(
+        (e) => e.name == json['fulfillment'],
+        orElse: () => OrderFulfillment.homeDelivery,
+      ),
+      paymentMethod: PaymentMethod.values.firstWhere(
+        (e) => e.name == json['payment_method'],
+        orElse: () => PaymentMethod.upi,
+      ),
+      paymentStatus: PaymentStatus.values.firstWhere(
+        (e) => e.name == json['payment_status'],
+        orElse: () => PaymentStatus.pending,
+      ),
+      status: OrderStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => OrderStatus.placed,
+      ),
+      deliveryAddress: json['delivery_address'] as String? ?? '',
+      deliveryOtp: json['delivery_otp'] as String?,
+      driverName: json['driver_name'] as String?,
+      driverPhone: json['driver_phone'] as String?,
+      driverLat: (json['driver_lat'] as num?)?.toDouble(),
+      driverLng: (json['driver_lng'] as num?)?.toDouble(),
+      isSurpriseDelivery: json['is_surprise_delivery'] as bool? ?? false,
+      surpriseRecipientName: json['surprise_recipient_name'] as String?,
+      surpriseNote: json['surprise_note'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      estimatedDeliveryTime: json['estimated_delivery_time'] != null
+          ? DateTime.tryParse(json['estimated_delivery_time'].toString())
+          : null,
+      rating: (json['rating'] as num?)?.toInt(),
+      review: json['review'] as String?,
+    );
   }
 
   OrderModel copyWith({

@@ -1,14 +1,23 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.init_db import init_database
 from app.api.v1 import auth, shops, products, rfq, quotations, orders, delivery, admin
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize database tables and seeds automatically
+    await init_database()
+    yield
 
 app = FastAPI(
     title=settings.APP_NAME,
     description="Hyperlocal Flower, Bouquet and Gift Marketplace API with Dynamic Price Quotations, Inspired by Swiggy/Zomato.",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS Middleware
@@ -42,4 +51,3 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
-

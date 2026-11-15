@@ -3,6 +3,8 @@ import '../models/user_model.dart';
 import '../models/shop_model.dart';
 import '../models/product_model.dart';
 import '../constants/demo_data.dart';
+import '../services/api_service.dart';
+import '../services/firestore_service.dart';
 
 class AppState {
   final UserModel currentUser;
@@ -170,6 +172,54 @@ class AppStateNotifier extends Notifier<AppState> {
         return p;
       }).toList(),
     );
+  }
+
+  void setCurrentUser(UserModel user) {
+    state = state.copyWith(currentUser: user);
+  }
+
+  void approveVendor(String shopId) {
+    // Notify Cloud Firestore & FastAPI backend asynchronously
+    FirestoreService.approveVendor(shopId);
+    ApiService.approveVendor(shopId);
+
+    // Update real-time UI state
+    state = state.copyWith(
+      shops: state.shops.map((shop) {
+        if (shop.id == shopId) {
+          return shop.copyWith(isVerified: true, isOpen: true);
+        }
+        return shop;
+      }).toList(),
+    );
+  }
+
+  Future<void> refreshFromBackend() async {
+    // 1. Check Cloud Firestore (Free Spark Plan)
+    final firestoreShops = await FirestoreService.getShops();
+    final firestoreProducts = await FirestoreService.getProducts();
+
+    if (firestoreShops != null && firestoreShops.isNotEmpty) {
+      state = state.copyWith(shops: firestoreShops);
+    }
+    if (firestoreProducts != null && firestoreProducts.isNotEmpty) {
+      state = state.copyWith(products: firestoreProducts);
+    }
+
+    // 2. Also check FastAPI backend
+    final backendShops = await ApiService.fetchShops();
+    final backendProducts = await ApiService.fetchProducts();
+
+    if (backendShops != null && backendShops.isNotEmpty) {
+      state = state.copyWith(shops: backendShops);
+    }
+    if (backendProducts != null && backendProducts.isNotEmpty) {
+      state = state.copyWith(products: backendProducts);
+    }
+  }
+
+  void registerNewShop(ShopModel newShop) {
+    state = state.copyWith(shops: [...state.shops, newShop]);
   }
 
   void addProduct(ProductModel product) {

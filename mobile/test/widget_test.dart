@@ -5,9 +5,17 @@ import 'package:flower_connect/core/models/rfq_model.dart';
 import 'package:flower_connect/core/state/rfq_provider.dart';
 import 'package:flower_connect/core/state/cart_provider.dart';
 import 'package:flower_connect/core/state/order_provider.dart';
+import 'package:flower_connect/core/models/user_model.dart';
+import 'package:flower_connect/core/models/shop_model.dart';
+import 'package:flower_connect/core/state/auth_state_provider.dart';
+import 'package:flower_connect/core/state/app_state_provider.dart';
 import 'package:flower_connect/core/constants/demo_data.dart';
+import 'package:flower_connect/core/services/api_service.dart';
 
 void main() {
+  setUp(() {
+    ApiService.requestTimeout = const Duration(milliseconds: 30);
+  });
   test('Unit Test - Cart calculation and fulfillment logic', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -102,5 +110,99 @@ void main() {
     // Verify order was pushed to OrderProvider
     final orders = container.read(orderProvider).orders;
     expect(orders.any((o) => o.id == order.id), isTrue);
+  });
+
+  test('Unit Test - Phase 1: Common Mobile OTP Authentication & Role Navigation', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    final authNotifier = container.read(authStateProvider.notifier);
+
+    // Initial state: not authenticated
+    expect(container.read(authStateProvider).isAuthenticated, isFalse);
+
+    // 1. Send OTP to valid 10-digit mobile
+    final otpSent = await authNotifier.sendOtp('9876543210');
+    expect(otpSent, isTrue);
+    expect(container.read(authStateProvider).isOtpSent, isTrue);
+    expect(container.read(authStateProvider).phoneNumber, '+919876543210');
+
+    // 2. Verify with invalid OTP should fail
+    final badOtp = await authNotifier.verifyOtp('000000');
+    expect(badOtp, isFalse);
+    expect(container.read(authStateProvider).errorMessage, isNotNull);
+
+    // 3. Verify with valid OTP for Customer
+    final verified = await authNotifier.verifyOtp('123456');
+    expect(verified, isTrue);
+    expect(container.read(authStateProvider).isAuthenticated, isTrue);
+    expect(container.read(authStateProvider).currentUser?.role, UserRole.customer);
+    expect(container.read(appStateProvider).currentUser.role, UserRole.customer);
+
+    // 4. Logout
+    authNotifier.logout();
+    expect(container.read(authStateProvider).isAuthenticated, isFalse);
+  });
+
+  test('Unit Test - Phase 1: Pending Vendor State & Admin Instant Approval', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    final authNotifier = container.read(authStateProvider.notifier);
+    final appNotifier = container.read(appStateProvider.notifier);
+
+    // Quick login as Pending Vendor
+    authNotifier.quickLogin('+919999988888');
+    final authState = container.read(authStateProvider);
+    expect(authState.isAuthenticated, isTrue);
+    expect(authState.currentUser?.shopId, 'shop_pending_01');
+
+    // Verify shop is initially pending (unverified)
+    final pendingShop = container.read(appStateProvider).shops.firstWhere((s) => s.id == 'shop_pending_01');
+    expect(pendingShop.isVerified, isFalse);
+
+    // Admin approves the shop
+    appNotifier.approveVendor('shop_pending_01');
+
+    // Verify shop is now verified and active
+    final approvedShop = container.read(appStateProvider).shops.firstWhere((s) => s.id == 'shop_pending_01');
+    expect(approvedShop.isVerified, isTrue);
+    expect(approvedShop.isOpen, isTrue);
+  });
+
+  test('Unit Test - Phase 1: Strict Admin Security (Self-assignment forbidden)', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    final authNotifier = container.read(authStateProvider.notifier);
+
+    // Try to register as Admin
+    final adminAttempt = await authNotifier.registerProfile(
+      fullName: 'Attacker Admin',
+      role: UserRole.admin, // MUST BE REJECTED
+    );
+
+    expect(adminAttempt, isFalse);
+    expect(container.read(authStateProvider).errorMessage, contains('forbidden'));
+    expect(container.read(authStateProvider).isAuthenticated, isFalse);
+
+    // Register as new vendor -> creates pending shop
+    await authNotifier.sendOtp('9123456789');
+    final vendorSuccess = await authNotifier.registerProfile(
+      fullName: 'New Florist',
+      role: UserRole.flowerMerchant,
+      shopName: 'Green Petals Stall',
+      shopType: ShopType.flowerShop,
+      shopAddress: 'Jayanagar 4th Block',
+    );
+
+    expect(vendorSuccess, isTrue);
+    expect(container.read(authStateProvider).isAuthenticated, isTrue);
+    final newShopId = container.read(authStateProvider).currentUser?.shopId;
+    expect(newShopId, isNotNull);
+
+    // Ensure new vendor shop defaults to unverified (pending admin approval)
+    final newShop = container.read(appStateProvider).shops.firstWhere((s) => s.id == newShopId);
+    expect(newShop.isVerified, isFalse);
   });
 }
