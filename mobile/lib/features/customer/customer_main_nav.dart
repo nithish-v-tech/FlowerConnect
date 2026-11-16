@@ -10,6 +10,7 @@ import '../bouquet_builder/custom_bouquet_builder_screen.dart';
 import '../quotation/quotation_comparison_screen.dart';
 import '../quotation/create_rfq_screen.dart';
 import 'order_history_screen.dart';
+import '../portal/portal_selection_screen.dart';
 
 class CustomerMainNav extends ConsumerStatefulWidget {
   const CustomerMainNav({super.key});
@@ -164,6 +165,10 @@ class _CustomerProfileTab extends ConsumerWidget {
                 onTap: () {
                   if (Navigator.canPop(context)) {
                     Navigator.pop(context);
+                  } else {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const PortalSelectionScreen()),
+                    );
                   }
                 },
                 child: Container(

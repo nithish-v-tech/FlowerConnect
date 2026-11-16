@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/state/auth_state_provider.dart';
 import 'register_profile_screen.dart';
+import '../portal/portal_selection_screen.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   const OtpVerificationScreen({super.key});
@@ -90,11 +91,16 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     if (success && mounted) {
       final authState = ref.read(authStateProvider);
       if (authState.isNewUser) {
-        Navigator.of(context).push(
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const RegisterProfileScreen()),
+          (route) => false,
+        );
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const PortalSelectionScreen()),
+          (route) => false,
         );
       }
-      // If existing user, authState.isAuthenticated will be true and FlowerConnectApp rebuilds
     }
   }
 
@@ -111,6 +117,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             ref.read(authStateProvider.notifier).logout();
+            Navigator.of(context).pop();
           },
         ),
       ),

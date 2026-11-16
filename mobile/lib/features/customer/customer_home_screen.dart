@@ -9,6 +9,7 @@ import 'shop_detail_screen.dart';
 import 'cart_screen.dart';
 import '../bouquet_builder/custom_bouquet_builder_screen.dart';
 import '../quotation/create_rfq_screen.dart';
+import '../portal/portal_selection_screen.dart';
 
 class CustomerHomeScreen extends ConsumerStatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -120,6 +121,10 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
                         onTap: () {
                           if (Navigator.canPop(context)) {
                             Navigator.pop(context);
+                          } else {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(builder: (_) => const PortalSelectionScreen()),
+                            );
                           }
                         },
                         borderRadius: BorderRadius.circular(20),

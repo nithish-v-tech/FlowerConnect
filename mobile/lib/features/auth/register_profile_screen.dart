@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/models/user_model.dart';
 import '../../core/models/shop_model.dart';
 import '../../core/state/auth_state_provider.dart';
+import '../portal/portal_selection_screen.dart';
 
 class RegisterProfileScreen extends ConsumerStatefulWidget {
   const RegisterProfileScreen({super.key});
@@ -77,6 +78,10 @@ class _RegisterProfileScreenState extends ConsumerState<RegisterProfileScreen> {
               : 'Welcome to FlowerConnect, ${_nameController.text.trim()}!'),
           backgroundColor: const Color(0xFF16A34A),
         ),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const PortalSelectionScreen()),
+        (route) => false,
       );
     }
   }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/state/auth_state_provider.dart';
 import 'otp_verification_screen.dart';
+import 'register_profile_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -34,10 +35,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         MaterialPageRoute(builder: (_) => const OtpVerificationScreen()),
       );
     }
-  }
-
-  void _demoQuickLogin(String phone) {
-    ref.read(authStateProvider.notifier).quickLogin(phone);
   }
 
   @override
@@ -243,90 +240,100 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
 
-              // Demo Testing Portals Header
-              Row(
-                children: [
-                  const Expanded(child: Divider(color: AppColors.divider)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'OR TEST ROLE PORTALS INSTANTLY',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textMuted,
-                        letterSpacing: 0.8,
+              // Register Option Link
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'New to FlowerConnect?',
+                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RegisterProfileScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Register Profile',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
-                  ),
-                  const Expanded(child: Divider(color: AppColors.divider)),
-                ],
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // Demo Role Cards
-              _demoRoleTile(
-                title: 'Customer Portal',
-                subtitle: 'Pooja Hegde • +91 98765 43210',
-                roleBadge: 'CUSTOMER',
-                roleColor: AppColors.primary,
-                icon: Icons.shopping_bag_outlined,
-                onPhoneTap: () => _phoneController.text = '9876543210',
-                onQuickLogin: () => _demoQuickLogin('+919876543210'),
+              // Firebase Spark Test Numbers Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.developer_mode, size: 18, color: AppColors.primary),
+                        SizedBox(width: 8),
+                        Text(
+                          'Firebase Spark Plan Test Accounts',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Use configured test phone numbers to authenticate via Firebase with zero SMS charges. Tap to autofill & tap "Get OTP":',
+                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.4),
+                    ),
+                    const SizedBox(height: 12),
+                    _testNumberTile(
+                      roleName: 'Customer',
+                      name: 'Pooja Hegde',
+                      phoneDigits: '9876543210',
+                      badgeColor: AppColors.primary,
+                      icon: Icons.person_outline,
+                    ),
+                    const SizedBox(height: 8),
+                    _testNumberTile(
+                      roleName: 'Vendor (Florist)',
+                      name: 'Sri Lakshmi Flower Stall',
+                      phoneDigits: '9845012345',
+                      badgeColor: const Color(0xFFE11D48),
+                      icon: Icons.storefront_outlined,
+                    ),
+                    const SizedBox(height: 8),
+                    _testNumberTile(
+                      roleName: 'Platform Admin',
+                      name: 'Super Admin',
+                      phoneDigits: '9000000001',
+                      badgeColor: const Color(0xFF059669),
+                      icon: Icons.admin_panel_settings_outlined,
+                    ),
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 10),
-
-              _demoRoleTile(
-                title: 'Vendor Portal (Approved)',
-                subtitle: 'Sri Lakshmi Stall • +91 98450 12345',
-                roleBadge: 'VENDOR',
-                roleColor: const Color(0xFFE11D48),
-                icon: Icons.storefront_outlined,
-                onPhoneTap: () => _phoneController.text = '9845012345',
-                onQuickLogin: () => _demoQuickLogin('+919845012345'),
-              ),
-
-              const SizedBox(height: 10),
-
-              _demoRoleTile(
-                title: 'Vendor Portal (Pending Review)',
-                subtitle: 'Sunshine Florist • +91 99999 88888',
-                roleBadge: 'PENDING',
-                roleColor: const Color(0xFFD97706),
-                icon: Icons.hourglass_top_outlined,
-                onPhoneTap: () => _phoneController.text = '9999988888',
-                onQuickLogin: () => _demoQuickLogin('+919999988888'),
-              ),
-
-              const SizedBox(height: 10),
-
-              _demoRoleTile(
-                title: 'Super Admin Portal',
-                subtitle: 'Super Admin • +91 90000 00001',
-                roleBadge: 'ADMIN',
-                roleColor: const Color(0xFF059669),
-                icon: Icons.admin_panel_settings_outlined,
-                onPhoneTap: () => _phoneController.text = '9000000001',
-                onQuickLogin: () => _demoQuickLogin('+919000000001'),
-              ),
-
-              const SizedBox(height: 10),
-
-              _demoRoleTile(
-                title: 'Delivery Partner Portal',
-                subtitle: 'Ramesh Gowda • +91 94480 33211',
-                roleBadge: 'DELIVERY',
-                roleColor: const Color(0xFF0284C7),
-                icon: Icons.delivery_dining_outlined,
-                onPhoneTap: () => _phoneController.text = '9448033211',
-                onQuickLogin: () => _demoQuickLogin('+919448033211'),
-              ),
-
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
               // Disclaimer
               const Center(
@@ -344,104 +351,90 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _demoRoleTile({
-    required String title,
-    required String subtitle,
-    required String roleBadge,
-    required Color roleColor,
+  Widget _testNumberTile({
+    required String roleName,
+    required String name,
+    required String phoneDigits,
+    required Color badgeColor,
     required IconData icon,
-    required VoidCallback onPhoneTap,
-    required VoidCallback onQuickLogin,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: roleColor.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: roleColor, size: 18),
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _phoneController.text = phoneDigits;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Autofilled $roleName (+91 $phoneDigits). Tap "Get OTP" to authenticate.'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: badgeColor,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: InkWell(
-              onTap: onPhoneTap,
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: badgeColor.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: badgeColor, size: 16),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Flexible(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      Text(
+                        roleName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                       ),
                       const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: roleColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          roleBadge,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: roleColor,
-                          ),
+                      Text(
+                        '+91 $phoneDigits',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
                   Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
+                    name,
+                    style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
                   ),
                 ],
               ),
             ),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: const Size(50, 30),
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(8),
-                side: const BorderSide(color: AppColors.cardBorder),
+              ),
+              child: const Text(
+                'Autofill',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
               ),
             ),
-            onPressed: onQuickLogin,
-            child: const Text(
-              'Login',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

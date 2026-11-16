@@ -10,6 +10,7 @@ import '../../core/state/auth_state_provider.dart';
 import '../shared/status_badge.dart';
 import 'submit_quotation_dialog.dart';
 import 'daily_price_manager_screen.dart';
+import '../portal/portal_selection_screen.dart';
 
 class MerchantDashboardScreen extends ConsumerStatefulWidget {
   const MerchantDashboardScreen({super.key});
@@ -83,6 +84,10 @@ class _MerchantDashboardScreenState extends ConsumerState<MerchantDashboardScree
             onPressed: () {
               if (Navigator.canPop(context)) {
                 Navigator.pop(context);
+              } else {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const PortalSelectionScreen()),
+                );
               }
             },
           ),

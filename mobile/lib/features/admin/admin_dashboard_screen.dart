@@ -6,6 +6,7 @@ import '../../core/state/app_state_provider.dart';
 import '../../core/state/order_provider.dart';
 import '../../core/state/rfq_provider.dart';
 import '../../core/state/auth_state_provider.dart';
+import '../portal/portal_selection_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -52,6 +53,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             onPressed: () {
               if (Navigator.canPop(context)) {
                 Navigator.pop(context);
+              } else {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const PortalSelectionScreen()),
+                );
               }
             },
           ),

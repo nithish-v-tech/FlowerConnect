@@ -11,6 +11,9 @@ import 'package:flower_connect/core/state/auth_state_provider.dart';
 import 'package:flower_connect/core/state/app_state_provider.dart';
 import 'package:flower_connect/core/constants/demo_data.dart';
 import 'package:flower_connect/core/services/api_service.dart';
+import 'package:flower_connect/main.dart';
+import 'package:flower_connect/features/auth/login_screen.dart';
+import 'package:flower_connect/features/portal/portal_selection_screen.dart';
 
 void main() {
   setUp(() {
@@ -204,5 +207,36 @@ void main() {
     // Ensure new vendor shop defaults to unverified (pending admin approval)
     final newShop = container.read(appStateProvider).shops.firstWhere((s) => s.id == newShopId);
     expect(newShop.isVerified, isFalse);
+  });
+
+  testWidgets('App launch and portal routing test - starts on LoginScreen and routes to PortalSelectionScreen upon auth', (WidgetTester tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const FlowerConnectApp(),
+      ),
+    );
+    await tester.pump();
+
+    // 1. Verify initial launch screen is LoginScreen
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byType(PortalSelectionScreen), findsNothing);
+    expect(find.text('Mobile Number Login'), findsOneWidget);
+    expect(find.text('Firebase Spark Plan Test Accounts'), findsOneWidget);
+
+    // 2. Authenticate user
+    container.read(authStateProvider.notifier).quickLogin('+919876543210');
+    await tester.pumpAndSettle();
+
+    // 3. Verify screen re-routes to PortalSelectionScreen
+    expect(find.byType(PortalSelectionScreen), findsOneWidget);
+    expect(find.byType(LoginScreen), findsNothing);
+    expect(find.text('FlowerConnect Portals'), findsOneWidget);
+    expect(find.text('Customer Portal'), findsOneWidget);
+    expect(find.text('Vendor & Merchant Portal'), findsOneWidget);
+    expect(find.text('Administrator Console'), findsOneWidget);
   });
 }

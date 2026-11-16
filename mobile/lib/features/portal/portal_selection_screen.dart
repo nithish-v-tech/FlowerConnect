@@ -10,6 +10,7 @@ import '../customer/customer_main_nav.dart';
 import '../merchant/merchant_dashboard_screen.dart';
 import '../merchant/vendor_shop_registration_screen.dart';
 import '../auth/vendor_approval_pending_screen.dart';
+import '../auth/login_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
 
 class PortalSelectionScreen extends ConsumerStatefulWidget {
@@ -186,6 +187,10 @@ class _PortalSelectionScreenState extends ConsumerState<PortalSelectionScreen> {
             icon: const Icon(Icons.logout, color: AppColors.textSecondary),
             onPressed: () {
               ref.read(authStateProvider.notifier).logout();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
             },
           ),
         ],
