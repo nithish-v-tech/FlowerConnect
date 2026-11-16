@@ -7,7 +7,6 @@ import '../../core/state/app_state_provider.dart';
 import '../../core/state/order_provider.dart';
 import '../../core/state/rfq_provider.dart';
 import '../../core/state/auth_state_provider.dart';
-import '../auth/role_switcher_sheet.dart';
 import '../shared/status_badge.dart';
 import 'submit_quotation_dialog.dart';
 import 'daily_price_manager_screen.dart';
@@ -61,6 +60,12 @@ class _MerchantDashboardScreenState extends ConsumerState<MerchantDashboardScree
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -73,8 +78,13 @@ class _MerchantDashboardScreenState extends ConsumerState<MerchantDashboardScree
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.swap_horiz, color: AppColors.primary),
-            onPressed: () => RoleSwitcherSheet.show(context),
+            tooltip: 'Switch Portal',
+            icon: const Icon(Icons.apps, color: AppColors.primary),
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              }
+            },
           ),
           IconButton(
             tooltip: 'Log Out',

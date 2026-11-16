@@ -9,6 +9,7 @@ class QuotationModel {
   final String id;
   final String rfqId;
   final String merchantId;
+  final String? shopId;
   final String shopName;
   final String merchantPhone;
   final double merchantRating;
@@ -26,6 +27,7 @@ class QuotationModel {
     required this.id,
     required this.rfqId,
     required this.merchantId,
+    this.shopId,
     required this.shopName,
     required this.merchantPhone,
     required this.merchantRating,
@@ -49,6 +51,7 @@ class QuotationModel {
       'id': id,
       'rfq_id': rfqId,
       'merchant_id': merchantId,
+      'shop_id': shopId ?? merchantId,
       'shop_name': shopName,
       'merchant_phone': merchantPhone,
       'merchant_rating': merchantRating,
@@ -69,6 +72,7 @@ class QuotationModel {
       id: json['id'] as String,
       rfqId: json['rfq_id'] as String? ?? '',
       merchantId: json['merchant_id'] as String? ?? '',
+      shopId: json['shop_id'] as String?,
       shopName: json['shop_name'] as String? ?? 'Flower Shop',
       merchantPhone: json['merchant_phone'] as String? ?? '',
       merchantRating: (json['merchant_rating'] as num?)?.toDouble() ?? 4.8,
@@ -96,6 +100,7 @@ class QuotationModel {
     String? id,
     String? rfqId,
     String? merchantId,
+    String? shopId,
     String? shopName,
     String? merchantPhone,
     double? merchantRating,
@@ -113,6 +118,7 @@ class QuotationModel {
       id: id ?? this.id,
       rfqId: rfqId ?? this.rfqId,
       merchantId: merchantId ?? this.merchantId,
+      shopId: shopId ?? this.shopId,
       shopName: shopName ?? this.shopName,
       merchantPhone: merchantPhone ?? this.merchantPhone,
       merchantRating: merchantRating ?? this.merchantRating,

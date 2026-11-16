@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/product_model.dart';
-import '../../core/models/user_model.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/state/app_state_provider.dart';
 import '../../core/state/cart_provider.dart';
 import '../shared/product_card.dart';
-import '../auth/role_switcher_sheet.dart';
 import 'shop_detail_screen.dart';
 import 'cart_screen.dart';
 import '../bouquet_builder/custom_bouquet_builder_screen.dart';
@@ -117,9 +115,13 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
                           ),
                         ),
                       ),
-                      // Role Switcher Pill
+                      // Portal Switcher Pill
                       InkWell(
-                        onTap: () => RoleSwitcherSheet.show(context),
+                        onTap: () {
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          }
+                        },
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -128,13 +130,13 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                           ),
-                          child: Row(
+                          child: const Row(
                             children: [
-                              const Icon(Icons.swap_horiz, size: 14, color: AppColors.primary),
-                              const SizedBox(width: 4),
+                              Icon(Icons.apps, size: 14, color: AppColors.primary),
+                              SizedBox(width: 4),
                               Text(
-                                appState.currentUser.role.shortTag,
-                                style: const TextStyle(
+                                'Portals',
+                                style: TextStyle(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 11,

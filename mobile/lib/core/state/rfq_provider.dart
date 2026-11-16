@@ -101,6 +101,7 @@ class RFQNotifier extends Notifier<RFQState> {
   void submitQuotation({
     required String rfqId,
     required String merchantId,
+    String? shopId,
     required String shopName,
     required String merchantPhone,
     required double merchantRating,
@@ -116,6 +117,7 @@ class RFQNotifier extends Notifier<RFQState> {
       id: quoteId,
       rfqId: rfqId,
       merchantId: merchantId,
+      shopId: shopId ?? merchantId,
       shopName: shopName,
       merchantPhone: merchantPhone,
       merchantRating: merchantRating,
@@ -209,7 +211,7 @@ class RFQNotifier extends Notifier<RFQState> {
       customerId: rfq.customerId,
       customerName: rfq.customerName,
       customerPhone: '+91 98765 43210',
-      shopId: chosen.merchantId,
+      shopId: chosen.shopId ?? chosen.merchantId,
       shopName: chosen.shopName,
       items: [
         OrderItemModel(

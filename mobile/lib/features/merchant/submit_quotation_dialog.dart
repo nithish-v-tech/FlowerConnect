@@ -223,7 +223,8 @@ class _SubmitQuotationDialogState extends ConsumerState<SubmitQuotationDialog> {
 
                     ref.read(rfqProvider.notifier).submitQuotation(
                           rfqId: widget.rfq.id,
-                          merchantId: shop.id,
+                          merchantId: user.id,
+                          shopId: shop.id,
                           shopName: shop.name,
                           merchantPhone: shop.contactPhone,
                           merchantRating: shop.rating,

@@ -10,7 +10,6 @@ import '../bouquet_builder/custom_bouquet_builder_screen.dart';
 import '../quotation/quotation_comparison_screen.dart';
 import '../quotation/create_rfq_screen.dart';
 import 'order_history_screen.dart';
-import '../auth/role_switcher_sheet.dart';
 
 class CustomerMainNav extends ConsumerStatefulWidget {
   const CustomerMainNav({super.key});
@@ -156,26 +155,31 @@ class _CustomerProfileTab extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // Role Switcher Tile
+            // Portal Switcher Tile
             Material(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               child: InkWell(
                 borderRadius: BorderRadius.circular(16),
-                onTap: () => RoleSwitcherSheet.show(context),
+                onTap: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.cardBorder),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                    color: AppColors.primaryLight.withOpacity(0.4),
                   ),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: AppColors.primaryLight,
-                      child: Icon(Icons.swap_horiz, color: AppColors.primary),
+                  child: const ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      child: Icon(Icons.apps, color: Colors.white),
                     ),
-                    title: const Text('Switch Operating Role', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    subtitle: Text('Currently operating as: ${user.role.name}', style: const TextStyle(fontSize: 11)),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                    title: Text('Switch Workspace Portal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    subtitle: Text('Return to Customer / Vendor / Admin selection', style: TextStyle(fontSize: 11)),
+                    trailing: Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.primary),
                   ),
                 ),
               ),

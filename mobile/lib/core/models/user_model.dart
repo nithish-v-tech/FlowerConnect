@@ -50,6 +50,7 @@ class UserModel {
   final String? shopId;
   final String? avatarUrl;
   final String address;
+  final bool isVendorApproved;
 
   const UserModel({
     required this.id,
@@ -60,7 +61,10 @@ class UserModel {
     this.shopId,
     this.avatarUrl,
     this.address = '14, Greenview Lane, Indiranagar, Bengaluru',
+    this.isVendorApproved = false,
   });
+
+  bool get isAdmin => role == UserRole.admin;
 
   UserModel copyWith({
     String? id,
@@ -71,6 +75,7 @@ class UserModel {
     String? shopId,
     String? avatarUrl,
     String? address,
+    bool? isVendorApproved,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -81,6 +86,7 @@ class UserModel {
       shopId: shopId ?? this.shopId,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       address: address ?? this.address,
+      isVendorApproved: isVendorApproved ?? this.isVendorApproved,
     );
   }
 
@@ -99,6 +105,9 @@ class UserModel {
       parsedRole = UserRole.admin;
     }
 
+    final isApproved = json['is_vendor_approved'] == true ||
+        json['isVendorApproved'] == true;
+
     return UserModel(
       id: json['id']?.toString() ?? '',
       name: json['full_name']?.toString() ?? json['name']?.toString() ?? 'User',
@@ -107,6 +116,7 @@ class UserModel {
       role: parsedRole,
       shopId: json['shop_id']?.toString(),
       address: json['address']?.toString() ?? 'Bengaluru, Karnataka',
+      isVendorApproved: isApproved,
     );
   }
 
@@ -119,6 +129,7 @@ class UserModel {
       'role': role.name,
       'shop_id': shopId,
       'address': address,
+      'is_vendor_approved': isVendorApproved,
     };
   }
 }

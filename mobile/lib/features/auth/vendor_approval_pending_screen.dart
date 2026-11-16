@@ -4,9 +4,11 @@ import '../../core/theme/app_colors.dart';
 import '../../core/state/auth_state_provider.dart';
 import '../../core/state/app_state_provider.dart';
 import '../../core/models/shop_model.dart';
+import '../../core/services/firestore_service.dart';
 
 class VendorApprovalPendingScreen extends ConsumerWidget {
-  const VendorApprovalPendingScreen({super.key});
+  final ShopModel? shop;
+  const VendorApprovalPendingScreen({super.key, this.shop});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -15,8 +17,8 @@ class VendorApprovalPendingScreen extends ConsumerWidget {
     final user = authState.currentUser;
 
     // Find the vendor's shop
-    final shop = appState.shops.firstWhere(
-      (s) => s.id == user?.shopId,
+    final currentShop = shop ?? appState.shops.firstWhere(
+      (s) => s.id == user?.shopId || s.userId == user?.id,
       orElse: () => ShopModel(
         id: 'shop_pending',
         name: '${user?.name ?? 'Vendor'} Stall',
@@ -40,6 +42,12 @@ class VendorApprovalPendingScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Vendor Onboarding',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         actions: [
           IconButton(
             tooltip: 'Log Out',
@@ -137,15 +145,15 @@ class VendorApprovalPendingScreen extends ConsumerWidget {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   const Divider(height: 20),
-                  _detailRow(Icons.store, 'Shop Name', shop.name),
+                  _detailRow(Icons.store, 'Shop Name', currentShop.name),
                   const SizedBox(height: 10),
-                  _detailRow(Icons.category, 'Shop Category', shop.typeLabel),
+                  _detailRow(Icons.category, 'Shop Category', currentShop.typeLabel),
                   const SizedBox(height: 10),
-                  _detailRow(Icons.person, 'Applicant Owner', shop.ownerName),
+                  _detailRow(Icons.person, 'Applicant Owner', currentShop.ownerName),
                   const SizedBox(height: 10),
-                  _detailRow(Icons.phone, 'Contact Mobile', shop.contactPhone),
+                  _detailRow(Icons.phone, 'Contact Mobile', currentShop.contactPhone),
                   const SizedBox(height: 10),
-                  _detailRow(Icons.location_on, 'Location', shop.address),
+                  _detailRow(Icons.location_on, 'Location', currentShop.address),
                 ],
               ),
             ),
@@ -260,22 +268,28 @@ class VendorApprovalPendingScreen extends ConsumerWidget {
                     fontSize: 15,
                   ),
                 ),
-                onPressed: () {
-                  // Re-evaluate verification status
-                  if (shop.isVerified) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Congratulations! Your shop has been approved!'),
-                        backgroundColor: Color(0xFF16A34A),
-                      ),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Approval is still pending. Please check back shortly.'),
-                        backgroundColor: Color(0xFFD97706),
-                      ),
-                    );
+                onPressed: () async {
+                  await ref.read(appStateProvider.notifier).refreshFromBackend();
+                  final latestShop = await FirestoreService.getShopByUserId(user?.id ?? '');
+                  final isVerified = latestShop?.isVerified ?? currentShop.isVerified;
+
+                  if (context.mounted) {
+                    if (isVerified) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Congratulations! Your shop has been approved by Admin!'),
+                          backgroundColor: Color(0xFF16A34A),
+                        ),
+                      );
+                      Navigator.pop(context);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Approval is still pending review. Please check back shortly.'),
+                          backgroundColor: Color(0xFFD97706),
+                        ),
+                      );
+                    }
                   }
                 },
               ),

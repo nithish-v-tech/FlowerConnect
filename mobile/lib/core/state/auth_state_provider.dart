@@ -140,7 +140,47 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
+    // Check persisted session asynchronously
+    Future.microtask(() => initAuthSession());
     return const AuthState(isAuthenticated: false);
+  }
+
+  /// Check and restore persisted Firebase Authentication session
+  Future<void> initAuthSession() async {
+    try {
+      final fbUser = FirebaseAuthService.currentFirebaseUser;
+      if (fbUser != null) {
+        final uid = fbUser.uid;
+        final phone = fbUser.phoneNumber ?? '';
+
+        // Fetch or ensure profile in Firestore
+        UserModel? user = await FirestoreService.getUserProfile(uid);
+        if (user == null && phone.isNotEmpty) {
+          final normalized = _normalizePhone(phone);
+          final seeded = _seededUsers[normalized];
+          user = await FirestoreService.ensureUserProfile(
+            uid: uid,
+            phone: normalized,
+            preferredRole: seeded?.role ?? UserRole.customer,
+            name: seeded?.name,
+            shopId: seeded?.shopId,
+          );
+        }
+
+        if (user != null) {
+          state = state.copyWith(
+            isAuthenticated: true,
+            currentUser: user,
+            phoneNumber: phone.isNotEmpty ? phone : user.phone,
+            isNewUser: false,
+          );
+          ref.read(appStateProvider.notifier).setCurrentUser(user);
+          debugPrint('[Auth] Restored active session: ${user.id} (${user.role.name})');
+        }
+      }
+    } catch (e) {
+      debugPrint('[Auth] initAuthSession notice: $e');
+    }
   }
 
   String _normalizePhone(String raw) {
@@ -221,24 +261,27 @@ class AuthNotifier extends Notifier<AuthState> {
           final uid = userCredential!.user!.uid;
 
           // Check Cloud Firestore for existing profile
-          final firestoreUser = await FirestoreService.getUserProfile(uid);
-          if (firestoreUser != null) {
-            state = state.copyWith(
-              isLoading: false,
-              isAuthenticated: true,
-              currentUser: firestoreUser,
-              isNewUser: false,
+          var firestoreUser = await FirestoreService.getUserProfile(uid);
+          if (firestoreUser == null) {
+            // Check if this phone number has predefined seed properties (e.g. Super Admin, Flower Stall)
+            final seeded = _seededUsers[normalized];
+            firestoreUser = await FirestoreService.ensureUserProfile(
+              uid: uid,
+              phone: normalized,
+              preferredRole: seeded?.role ?? UserRole.customer,
+              name: seeded?.name,
+              shopId: seeded?.shopId,
             );
-            ref.read(appStateProvider.notifier).setCurrentUser(firestoreUser);
-            return true;
-          } else {
-            // New user in Firebase Auth, prompt profile registration
-            state = state.copyWith(
-              isLoading: false,
-              isNewUser: true,
-            );
-            return true;
           }
+
+          state = state.copyWith(
+            isLoading: false,
+            isAuthenticated: true,
+            currentUser: firestoreUser,
+            isNewUser: false,
+          );
+          ref.read(appStateProvider.notifier).setCurrentUser(firestoreUser);
+          return true;
         }
       } catch (e) {
         debugPrint('[Auth] Firebase verifyOtp error: $e');
@@ -413,6 +456,10 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       ref.read(appStateProvider.notifier).setCurrentUser(user);
     }
+  }
+
+  void setCurrentUser(UserModel user) {
+    state = state.copyWith(currentUser: user);
   }
 
   void logout() {

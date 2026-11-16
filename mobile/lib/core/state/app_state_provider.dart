@@ -137,16 +137,16 @@ class AppStateNotifier extends Notifier<AppState> {
   }
 
   void updateDailyFlowerRate(String shopId, String flowerName, double newRate) {
-    state = state.copyWith(
-      shops: state.shops.map((shop) {
-        if (shop.id == shopId) {
-          final updatedRates = Map<String, double>.from(shop.dailyRates);
-          updatedRates[flowerName] = newRate;
-          return shop.copyWith(dailyRates: updatedRates);
-        }
-        return shop;
-      }).toList(),
-    );
+    final updatedShops = state.shops.map((shop) {
+      if (shop.id == shopId) {
+        final updatedRates = Map<String, double>.from(shop.dailyRates);
+        updatedRates[flowerName] = newRate;
+        FirestoreService.updateShopDailyRates(shopId, updatedRates);
+        return shop.copyWith(dailyRates: updatedRates);
+      }
+      return shop;
+    }).toList();
+    state = state.copyWith(shops: updatedShops);
   }
 
   void toggleDeliveryDuty(bool isOnline) {
@@ -160,6 +160,7 @@ class AppStateNotifier extends Notifier<AppState> {
   }
 
   void updatePlatformCommissionRate(double newRate) {
+    FirestoreService.setCommissionRate(newRate);
     state = state.copyWith(platformCommissionRate: newRate);
   }
 
@@ -188,6 +189,18 @@ class AppStateNotifier extends Notifier<AppState> {
       shops: state.shops.map((shop) {
         if (shop.id == shopId) {
           return shop.copyWith(isVerified: true, isOpen: true);
+        }
+        return shop;
+      }).toList(),
+    );
+  }
+
+  void rejectVendor(String shopId) {
+    FirestoreService.rejectVendor(shopId);
+    state = state.copyWith(
+      shops: state.shops.map((shop) {
+        if (shop.id == shopId) {
+          return shop.copyWith(isVerified: false, isOpen: false);
         }
         return shop;
       }).toList(),

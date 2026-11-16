@@ -24,6 +24,7 @@ class FirestoreService {
   static CollectionReference? get ordersCol => _firestore?.collection('orders');
   static CollectionReference? get rfqsCol => _firestore?.collection('rfqs');
   static CollectionReference? get quotationsCol => _firestore?.collection('quotations');
+  static CollectionReference? get settingsCol => _firestore?.collection('platform_settings');
 
   /// Fetch user profile from Firestore users collection
   static Future<UserModel?> getUserProfile(String uid) async {
@@ -40,6 +41,68 @@ class FirestoreService {
     return null;
   }
 
+  /// Ensure user profile exists in Firestore upon authentication
+  static Future<UserModel> ensureUserProfile({
+    required String uid,
+    required String phone,
+    UserRole? preferredRole,
+    String? name,
+    String? shopId,
+  }) async {
+    final col = usersCol;
+    final existing = await getUserProfile(uid);
+    if (existing != null) {
+      return existing;
+    }
+
+    // Check if phone matches the pre-authorized admin test number
+    final normalizedPhone = phone.replaceAll(RegExp(r'\D'), '');
+    final isAuthorizedAdmin = normalizedPhone == '919000000001' ||
+        normalizedPhone == '9000000001';
+
+    final assignedRole = isAuthorizedAdmin
+        ? UserRole.admin
+        : (preferredRole ?? UserRole.customer);
+
+    final assignedName = name ??
+        (isAuthorizedAdmin
+            ? 'Antigravity Super Admin'
+            : (assignedRole == UserRole.customer ? 'Customer User' : 'Flower Partner'));
+
+    final newUser = UserModel(
+      id: uid,
+      name: assignedName,
+      email: isAuthorizedAdmin
+          ? 'admin@flowerconnect.app'
+          : '$uid@flowerconnect.app',
+      phone: phone,
+      role: assignedRole,
+      shopId: shopId,
+      address: 'Bengaluru, Karnataka',
+      isVendorApproved: isAuthorizedAdmin,
+    );
+
+    final userData = newUser.toJson();
+    if (isAuthorizedAdmin) {
+      userData['role'] = 'ADMIN';
+      userData['is_admin'] = true;
+    } else {
+      userData['is_admin'] = false;
+      userData['is_vendor_approved'] = false;
+    }
+
+    if (col != null) {
+      try {
+        await col.doc(uid).set(userData, SetOptions(merge: true));
+        debugPrint('[FirestoreService] Auto-provisioned user profile: $uid ($assignedRole)');
+      } catch (e) {
+        debugPrint('[FirestoreService] ensureUserProfile set error: $e');
+      }
+    }
+
+    return newUser;
+  }
+
   /// Save or update user profile in Firestore
   static Future<void> saveUserProfile(UserModel user) async {
     final col = usersCol;
@@ -49,6 +112,51 @@ class FirestoreService {
       debugPrint('[FirestoreService] Saved user profile: ${user.id} (${user.role.name})');
     } catch (e) {
       debugPrint('[FirestoreService] saveUserProfile error: $e');
+    }
+  }
+
+  /// Fetch shop owned by a specific authenticated user UID
+  static Future<ShopModel?> getShopByUserId(String userId) async {
+    final col = shopsCol;
+    if (col == null) return null;
+    try {
+      final snapshot = await col
+          .where('user_id', isEqualTo: userId)
+          .limit(1)
+          .get()
+          .timeout(const Duration(seconds: 4));
+      if (snapshot.docs.isNotEmpty) {
+        return ShopModel.fromJson(
+            snapshot.docs.first.data() as Map<String, dynamic>);
+      }
+    } catch (e) {
+      debugPrint('[FirestoreService] getShopByUserId error: $e');
+    }
+    return null;
+  }
+
+  /// Create a new shop in Firestore
+  static Future<void> createShop(ShopModel shop) async {
+    final col = shopsCol;
+    if (col == null) return;
+    try {
+      await col.doc(shop.id).set(shop.toJson());
+      debugPrint('[FirestoreService] Created shop: ${shop.id} (${shop.name})');
+    } catch (e) {
+      debugPrint('[FirestoreService] createShop error: $e');
+    }
+  }
+
+  /// Update daily flower rates on shop
+  static Future<void> updateShopDailyRates(
+      String shopId, Map<String, double> rates) async {
+    final col = shopsCol;
+    if (col == null) return;
+    try {
+      await col.doc(shopId).update({'daily_rates': rates});
+      debugPrint('[FirestoreService] Updated daily rates for shop: $shopId');
+    } catch (e) {
+      debugPrint('[FirestoreService] updateShopDailyRates error: $e');
     }
   }
 
@@ -116,6 +224,59 @@ class FirestoreService {
       debugPrint('[FirestoreService] approveVendor error: $e');
       return false;
     }
+  }
+
+  /// Admin rejects vendor registration in Firestore
+  static Future<bool> rejectVendor(String shopId) async {
+    final sCol = shopsCol;
+    final uCol = usersCol;
+    if (sCol == null || uCol == null) return false;
+    try {
+      await sCol.doc(shopId).update({
+        'is_verified': false,
+        'is_open': false,
+      });
+
+      final userSnapshot = await uCol.where('shop_id', isEqualTo: shopId).get();
+      for (var doc in userSnapshot.docs) {
+        await doc.reference.update({
+          'is_vendor_approved': false,
+        });
+      }
+
+      debugPrint('[FirestoreService] Shop $shopId rejected/deactivated in Firestore!');
+      return true;
+    } catch (e) {
+      debugPrint('[FirestoreService] rejectVendor error: $e');
+      return false;
+    }
+  }
+
+  /// Get platform commission rate from Firestore
+  static Future<double?> getCommissionRate() async {
+    final col = settingsCol;
+    if (col == null) return null;
+    try {
+      final doc = await col.doc('commission').get().timeout(const Duration(seconds: 3));
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data() as Map<String, dynamic>;
+        return (data['rate'] as num?)?.toDouble();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Update platform commission rate in Firestore
+  static Future<void> setCommissionRate(double rate) async {
+    final col = settingsCol;
+    if (col == null) return;
+    try {
+      await col.doc('commission').set({
+        'rate': rate,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, SetOptions(merge: true));
+      debugPrint('[FirestoreService] Updated platform commission rate to $rate');
+    } catch (_) {}
   }
 
   /// Create or update order in Firestore
